@@ -1,4 +1,4 @@
-FROM debian:jessie-20190610-slim
+FROM debian:jessie-20190610-slim as base
 MAINTAINER Sean Morris <sean@seanmorr.is>
 RUN apt-get update
 RUN apt-get install -y gnupg curl  apt-transport-https \
@@ -16,12 +16,19 @@ RUN useradd chrome-user \
 	&& mkdir /home/chrome-user \
 	&& chown chrome-user /home/chrome-user
 
-ADD ./ /app/
+RUN mkdir /app
 
-RUN cd /app && npm install
+WORKDIR /app/
 
 USER chrome-user
 
-WORKDIR /app/
+FROM base as standalone
+
+USER root
+
+ADD ./ /app/
+RUN cd /app && npm install
+
+USER chrome-user
 
 CMD node index.js

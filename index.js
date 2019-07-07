@@ -7,8 +7,9 @@ const rimraf = require("rimraf");
 const path = os.tmpdir() + '/.chrome-user';
 
 const chromeFlags = {
-	'--no-sandbox':        true
-	, '--hide-scrollbars': true
+	'--no-sandbox':          true
+	, '--hide-scrollbars':   true
+	, '--enable-automation': true
 };
 
 const [bin, script, ...args] = process.argv;
@@ -52,7 +53,7 @@ fsp.access(path).then((error)=>{
 	return cl.launch({
 		chromeFlags: flagArray
 		, userDataDir: path
-		// , logLevel: 'verbose'
+		, logLevel: 'verbose'
 		, envVars: {
 			HOME : path
 			, DISPLAY: ':0'
