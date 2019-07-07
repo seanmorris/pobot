@@ -1,0 +1,27 @@
+FROM debian:jessie-20190610-slim
+MAINTAINER Sean Morris <sean@seanmorr.is>
+RUN apt-get update
+RUN apt-get install -y gnupg curl  apt-transport-https \
+	&& curl -sL https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+	&& sh -c 'echo "deb https://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+
+RUN apt-get update \
+	&& apt-get install google-chrome-stable -y \
+	&& curl -sL https://deb.nodesource.com/setup_10.x | bash -
+
+RUN apt update \
+	&& apt install -y nodejs
+
+RUN useradd chrome-user \
+	&& mkdir /home/chrome-user \
+	&& chown chrome-user /home/chrome-user
+
+ADD ./ /app/
+
+RUN cd /app && npm install
+
+USER chrome-user
+
+WORKDIR /app/
+
+CMD node index.js
