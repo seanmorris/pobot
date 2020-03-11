@@ -18,30 +18,6 @@ const chromeFlags = {
 	// , '--proxy-server=socks5://localhost:8000'
 };
 
-const inject = (client) => (injection,args=[]) => {
-
-	let expression = `(()=> {
-		let ret = (${injection})(...${JSON.stringify(args)});
-
-		if(ret instanceof Promise)
-		{
-			return ret;
-		}
-		else if(typeof ret === 'object')
-		{
-			return JSON.stringify(ret)
-		}
-		else
-		{
-			return ret;
-		}
-	})()`;
-
-	return client.Runtime.evaluate({ expression, awaitPromise: true })
-		.then( response => response.result.value)
-		.catch( error => console.error(error));
-};
-
 module.exports = class 
 {
 	constructor(client, chrome)
@@ -100,10 +76,7 @@ module.exports = class
 					chromeFlags: flagArray
 					, userDataDir: path
 					, logLevel: 'verbose'
-					, envVars: {
-						HOME : path
-						, DISPLAY: ':0'
-					}
+					, envVars: {HOME : path, DISPLAY: ':0'}
 				});
 
 			}).then(chrome => {
@@ -118,67 +91,90 @@ module.exports = class
 
 			}).then(({chrome, client})=>{
 
-				client.inject = inject(client);
-
-				accept(new this(client, chrome));
-
+				return client.Page.enable()
+					.then(()=> client.Network.enable())
+					.then(()=> accept(new this(client, chrome)));
 			});
 		});
 	}
 
 	run(args)
 	{
-		this.client.goto = (url) => Page.navigate({url}).then(()=> Page.loadEventFired());
+		let iterate = () => {
+			if(!args.length)
+			{
+				console.error(`Closing Chrome...\n`);
+				this.client.close();
+				this.chrome.kill();
 
-		let {Network, Page} = this.client;
+				return;
+			}
 
-		return Page.enable().then(()=> Network.enable()).then(()=>{
+			let name;
 
-			let iterate = () => {
-				if(!args.length)
+			while(!name)
+			{
+				name = args.shift();
+			}
+
+			let routine = require(name);
+
+			console.error(`Running ${name}...`);
+
+			routine(this, args).then((result)=>{
+
+				console.error(`Done with ${name}.`);
+
+				if(result !== undefined)
 				{
-					console.error(`Closing Chrome...\n`);
-					this.client.close();
-					this.chrome.kill();
-
-					return;
-				}
-
-				let name;
-
-				while(!name)
-				{
-					name = args.shift();
-				}
-
-				let routine = require(name);
-
-				console.error(`Running ${name}...`);
-
-				routine(this.client, args).then((result)=>{
-
-					console.error(`Done with ${name}.`);
-
 					console.log(JSON.stringify(result));
+				}
 
-					iterate();
-				}).catch((error) => {
-					console.error(`Error! ${JSON.stringify(error)}`);
+				iterate();
+			}).catch((error) => {
+				console.error(`Error! ${JSON.stringify(error)}`);
 
-					this.client.close();
-					this.chrome.kill();
+				this.client.close();
+				this.chrome.kill();
 
-					process.exitCode = 1;
+				process.exitCode = 1;
 
-					return;
-				});
-			};
+				return;
+			});
+		};
 
-			return iterate();
-		});		
+		return iterate();
 	}
 
+	goto(url)
+	{
+		return this.client.Page.navigate({url})
+			.then(()=> this.client.Page.loadEventFired());
+	}
 
+	inject(injection, ...args)
+	{
+		const expression = `(()=> {
+			let ret = (${injection})(...${JSON.stringify(args)});
+
+			if(ret instanceof Promise)
+			{
+				return ret;
+			}
+			else if(typeof ret === 'object')
+			{
+				return JSON.stringify(ret)
+			}
+			else
+			{
+				return ret;
+			}
+		})()`;
+
+		return this.client.Runtime.evaluate({ expression, awaitPromise: true })
+			.then( response => response.result.value)
+			.catch( error => console.error(error));
+	}
 };
 
 return module;
