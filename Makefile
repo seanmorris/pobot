@@ -9,22 +9,31 @@ build-dev:
 configure:
 	@  npm install
 
-SCRIPT?=/app/example/npmSearch.js
+ARGS?=
+SCRIPTS?=
 
 run:
-	docker run --rm \
+	docker run -it --rm \
+	--ipc="host" \
 	-e "DISPLAY=${DISPLAY}" \
 	-v /tmp/.X11-unix:/tmp/.X11-unix \
+	-v=${SCRIPTS}:/scripts/: \
+	-v `pwd`:/work/ \
+	-w="/work" \
 	seanmorris/pobot \
-		node /app/index.js $(SCRIPT)
+		node /app/index.js ${ARGS}
 
 run-dev:
-	docker run --rm \
+	docker run -it --rm \
+	--ipc="host" \
 	-e "DISPLAY=${DISPLAY}" \
 	-v /tmp/.X11-unix:/tmp/.X11-unix \
+	-v=${SCRIPTS}:/scripts/: \
+	-v `pwd`:/work/ \
 	-v `pwd`:/app/ \
+	-w="/work" \
 	seanmorris/pobot \
-		node /app/index.js $(SCRIPT)
+		node /app/index.js ${ARGS}
 
 clean:
-	@ rm -rf node_modules package-lock.json;
+	@ rm -rf node_modules;

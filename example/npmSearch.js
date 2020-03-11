@@ -36,6 +36,6 @@ module.exports = (client, args) => new Promise((accept,reject)=>{
 	}).then(()=>{
 		console.log('Waiting 5 seconds...');
 
-		setTimeout(() => { accept('Done!.'); }, 5000);
+		return;
 	});
 });
