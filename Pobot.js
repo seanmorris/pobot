@@ -134,8 +134,7 @@ module.exports = class
 			}).catch((error) => {
 				console.error(`Error! ${JSON.stringify(error)}`);
 
-				this.client.close();
-				this.chrome.kill();
+				this.close();
 
 				process.exitCode = 1;
 
@@ -174,6 +173,12 @@ module.exports = class
 		return this.client.Runtime.evaluate({ expression, awaitPromise: true })
 			.then( response => response.result.value)
 			.catch( error => console.error(error));
+	}
+
+	close()
+	{
+		this.client.close();
+		this.chrome.kill();
 	}
 };
 
