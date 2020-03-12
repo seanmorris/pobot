@@ -114,9 +114,9 @@ module.exports = class
 				name = args.shift();
 			}
 
-			let routine = require(name);
-
 			console.error(`Running ${name}...`);
+
+			let routine = require(process.cwd() + '/' + name);
 
 			routine(this, args).then((result)=>{
 

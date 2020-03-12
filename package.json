@@ -1,11 +1,13 @@
 {
   "name": "pobot",
   "description": "Promise oriented chromebot",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": "Sean Morris",
   "license": "Apache-2.0",
-  "preferglobal":true,
-  "bin": {"pobot": "./bin/pobot.js"},
+  "preferglobal": true,
+  "bin": {
+    "pobot": "./bin/pobot.js"
+  },
   "dependencies": {
     "chrome-launcher": "^0.10.5",
     "chrome-remote-interface": "^0.25.6",

@@ -8,8 +8,6 @@ REPO    =seanmorris
 HASH :=$(shell echo _$$(git rev-parse --short HEAD 2>/dev/null) || echo init)
 TAG  :=$(shell git describe --tags 2>/dev/null || echo ${HASH})
 
-FULLNAME ?=${REPO}/${PROJECT}:${TAG}
-
 build:
 	@ docker build . \
 		-t seanmorris/pobot:latest  \
