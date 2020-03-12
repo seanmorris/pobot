@@ -31,4 +31,4 @@ RUN cd /app && npm install
 
 USER chrome-user
 
-CMD node index.js
+CMD node bin/pobot.js
