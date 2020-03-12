@@ -18,7 +18,7 @@ In the example below, we navigate to a page and `then` inject some javascript. *
 Pobot.get([]).then(pobot=>{
 
 	pobot.goto('https:google.com').then(() => {
-					
+
 		return pobot.inject(() => {
 
 			document.querySelector('input[type=text]').value = 'Sean Morris';
@@ -49,7 +49,94 @@ Pobot.get([]).then(pobot=>{
 
 ### CLI
 
-`make -f ~/pobot/Makefile run SCRIPTS=~/pobot-scripts/ ARGS=/scripts/pobot-letsvue/login-test`
+Pobot can be installed globally via:
+
+```bash
+$ npm install -g pobot
+```
+
+and can be used with scripts like so:
+
+```bash
+$ pobot ./relative-path-to/script.js
+```
+
+Scripts are formatted like modules and may export functions or promises:
+
+```javascript
+const readline = require('readline');
+
+const populateSearch = (keyword) => {
+	const field = document.querySelector('#search input[type="search"]');
+
+	if(!field)
+	{
+		return;
+	}
+
+	field.value = keyword;
+};
+
+const peformSearch = () => {
+	const button = document.querySelector('#search button[type="submit"]');
+
+	button.click();
+};
+
+const clickFirstLink = () => {
+
+	document.querySelector('.center-ns a').click();
+
+};
+
+module.exports = (pobot, args) => new Promise((accept,reject)=>{
+
+	console.log('Opening npmjs.com...');
+
+	pobot.goto('http://npmjs.com').then(()=>{
+		return new Promise((accept,reject)=>{
+
+			const rli = readline.createInterface({
+			  input: process.stdin,
+			  output: process.stdout
+			});
+
+			rli.question('keyword:', (answer) => {
+
+				rli.close();
+
+				accept(answer)
+
+			});
+		});
+
+	}).then((keyword)=>{
+
+		console.log('Populating keyword...');
+		return pobot.inject(
+			populateSearch
+			, [keyword || args.shift() || 'pobot']
+		);
+
+	}).then(()=>{
+
+		console.log('Performing search...');
+		return pobot.inject(peformSearch);
+
+	}).then(()=>{
+
+		console.log('Clicking first link...');
+
+		setTimeout(() => { pobot.inject(clickFirstLink) }, 500);
+
+	}).then(()=>{
+
+		setTimeout(() => { accept('Done!.'); }, 5000);
+
+	});
+
+});
+````
 
 
 ## Pobot
