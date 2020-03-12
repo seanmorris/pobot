@@ -56,7 +56,7 @@ module.exports = class
 
 			fsp.access(path).then((error)=>{
 		
-				console.error(`Userdir ${path} cleaned...`);
+				// console.error(`Userdir ${path} cleaned...`);
 				
 				return new Promise((accept)=>{
 					rimraf(path, ()=>{
@@ -70,20 +70,20 @@ module.exports = class
 
 			}).then(()=>{
 		
-				console.error(`Userdir ${path} created...`);
+				// console.error(`Userdir ${path} created...`);
 
 				return cl.launch({
 					chromeFlags: flagArray
 					, userDataDir: path
-					, logLevel: 'verbose'
 					, envVars: {HOME : path, DISPLAY: ':0'}
+					// , logLevel: 'verbose'
 				});
 
 			}).then(chrome => {
 
 				const port = chrome.port;
 
-				console.error(`Started Chrome, connecting on port ${port}...\n`);
+				// console.error(`Started Chrome, connecting on port ${port}...\n`);
 
 				return cdp({port:chrome.port}).then((client)=>{
 					return {chrome, client};
@@ -103,10 +103,7 @@ module.exports = class
 		let iterate = () => {
 			if(!args.length)
 			{
-				console.error(`Closing Chrome...\n`);
-				this.client.close();
-				this.chrome.kill();
-
+				this.close();
 				return;
 			}
 
@@ -151,6 +148,11 @@ module.exports = class
 			.then(()=> this.client.Page.loadEventFired());
 	}
 
+	loaded()
+	{
+		return this.client.Page.loadEventFired();
+	}
+
 	inject(injection, ...args)
 	{
 		const expression = `(()=> {
@@ -177,6 +179,7 @@ module.exports = class
 
 	close()
 	{
+		// console.error(`Closing Chrome...\n`);
 		this.client.close();
 		this.chrome.kill();
 	}
