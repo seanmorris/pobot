@@ -18,7 +18,7 @@ const chromeFlags = {
 	// , '--proxy-server=socks5://localhost:8000'
 };
 
-module.exports = class 
+module.exports = class
 {
 	constructor(client, chrome)
 	{
@@ -55,22 +55,30 @@ module.exports = class
 			});
 
 			fsp.access(path).then((error)=>{
-		
-				// console.error(`Userdir ${path} cleaned...`);
-				
-				return new Promise((accept)=>{
-					rimraf(path, ()=>{
-						fsp.mkdir(path).then(()=> accept() );
-					})
-				});
 
-			}).catch((error)=>{
+				// console.error(`Checking for userdir ${path}...`);
 
-				return fsp.mkdir(path);
+				try
+				{
+					return new Promise(accept => {
+						rimraf(path, ()=>{
+							return fsp.mkdir(path).then(() => {
+								// console.error(`Userdir ${path} cleaned...`);
+								accept();
+							});
+						});
+					});
+				}
+				catch(error)
+				{
+					return fsp.mkdir(path).then(() => {
+						// console.error(`Userdir ${path} created...`);
+					});
+				}
 
 			}).then(()=>{
-		
-				// console.error(`Userdir ${path} created...`);
+
+				// console.error(`Launching chrome...`);
 
 				return cl.launch({
 					chromeFlags: flagArray
@@ -179,8 +187,11 @@ module.exports = class
 
 	close()
 	{
-		// console.error(`Closing Chrome...\n`);
 		this.client.close();
+	}
+
+	kill()
+	{
 		this.chrome.kill();
 	}
 };
