@@ -1,4 +1,4 @@
-FROM debian:jessie-20190610-slim as base
+FROM debian:bullseye-20221004-slim as base
 MAINTAINER Sean Morris <sean@seanmorr.is>
 RUN apt-get update
 RUN apt-get install -y gnupg curl  apt-transport-https \
@@ -7,7 +7,7 @@ RUN apt-get install -y gnupg curl  apt-transport-https \
 
 RUN apt-get update \
 	&& apt-get install google-chrome-stable -y \
-	&& curl -sL https://deb.nodesource.com/setup_10.x | bash -
+	&& curl -sL https://deb.nodesource.com/setup_14.x | bash -
 
 RUN apt update \
 	&& apt install -y nodejs
