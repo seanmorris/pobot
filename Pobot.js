@@ -9,8 +9,8 @@ const rimraf = require("rimraf");
 const path = os.tmpdir() + '/.chrome-user';
 
 const chromeFlags = {
-	'--no-sandbox':          true
-	, '--hide-scrollbars':   true
+	'--no-sandbox':        true
+	, '--hide-scrollbars': true
 	// , '--enable-automation': true
 	// , '--blink-settings':    'imagesEnabled=true'
 	// , '--disable-gpu':       false
