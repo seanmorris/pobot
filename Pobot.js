@@ -2,7 +2,8 @@ const cl  = require('chrome-launcher');
 const cdp = require('chrome-remote-interface');
 
 const os  = require('os');
-const fsp = require("fs").promises;
+const fs  = require("fs");
+const fsp = fs.promises;
 
 const rimraf = require("rimraf");
 
@@ -54,10 +55,8 @@ module.exports = class
 				return `${key}=${chromeFlags[key]}`
 			});
 
-			fsp.access(path).then((error)=>{
-
+			const checkPath = fsp.access(path).catch(accept => {
 				// console.error(`Checking for userdir ${path}...`);
-
 				try
 				{
 					return new Promise(accept => {
@@ -75,8 +74,9 @@ module.exports = class
 						// console.error(`Userdir ${path} created...`);
 					});
 				}
+			});
 
-			}).then(()=>{
+			checkPath.then(()=>{
 
 				// console.error(`Launching chrome...`);
 
