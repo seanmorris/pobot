@@ -7,14 +7,18 @@ const os  = require('os');
 const fs  = require("fs");
 const fsp = fs.promises;
 
-const rimraf = require("rimraf");
+const { Console } = require('console');
+
+const rimraf        = require("rimraf");
+const child_process = require('child_process');
+const readline      = require('readline');
 
 const userDataDir = os.tmpdir() + '/.chrome-user';
 
 const defaultFlags  = {
-	'--no-sandbox':        true
+	'--enable-automation': true
 	, '--hide-scrollbars': true
-	, '--enable-automation': true
+	, '--no-sandbox':      true
 	// , '--blink-settings':    'imagesEnabled=true'
 	// , '--disable-gpu':       false
 	// , '--headless':          false
@@ -25,6 +29,53 @@ const keyCodes = {"0":48,"1":49,"2":50,"3":51,"4":52,"5":53,"6":54,"7":55,"8":56
 
 const CallBindings = Symbol('CallBindings');
 const CallConsole  = Symbol('CallConsole');
+const CallPageLoad = Symbol('CallPageLoad');
+
+const konsole = new Console({stdout: process.stderr, stderr: process.stderr});
+
+const launchFirefox = ({port, flags} = {}) => {
+
+	const findPort = port ? Promise.resolve(port) : new Promise(accept => {
+		const proc   = child_process.exec(`netstat -tunlep | grep LISTEN | awk '{print $4}' | perl -pe 's/.+://' | sort -n`);
+		const reader = readline.createInterface({input:proc.stdout});
+
+		const usedPorts = new Set;
+
+		reader.on('line',  line => usedPorts.add(Number(line)));
+		reader.on('close', () => {
+			const maxPort = 2**16;
+			const minPort = 2**10;
+
+			let port = minPort + Math.trunc((maxPort - minPort) * Math.random())
+
+			while(usedPorts.has(port))
+			{
+				port++
+			}
+
+			accept(port);
+		});
+	});
+
+	return findPort.then(port => {
+		const proc = child_process.spawn('/usr/bin/env', ['-S', 'firefox', '--remote-debugging-port',  Number(port), `--url`, `${JSON.parse(flags['--url'])}`]);
+		const pid     = proc.pid;
+		const kill    = () => proc.kill();
+
+		const browser = {pid, kill, port, process:proc};
+
+		const reader = readline.createInterface({input:proc.stderr});
+
+		return new Promise(accept => {
+			reader.on('line', line => {
+				if(line.substr(0, 18) === 'DevTools listening')
+				{
+					accept(browser);
+				}
+			});
+		});
+	});
+};
 
 module.exports = class
 {
@@ -35,13 +86,17 @@ module.exports = class
 		this.injectCount = 0;
 
 		Object.defineProperties(this, {
-			consoleHandlers: {value: new Set}
-			, bindings:      {value: new Map}
-			, pending:       {value: new Map}
-			, client:        {value: client}
-			, chrome:        {value: chrome}
-			, init:          {value: new Map}
+			consoleHandlers:  {value: new Set}
+			, onNextPageLoad: {value: new Set}
+			, onPageLoad:     {value: new Set}
+			, bindings:       {value: new Map}
+			, pending:        {value: new Map}
+			, client:         {value: client}
+			, chrome:         {value: chrome}
+			, init:           {value: new Map}
 		});
+
+		client.Page.loadEventFired(event => this[CallPageLoad](event));
 	}
 
 	static get(args, chromePath)
@@ -87,8 +142,13 @@ module.exports = class
 		createPath.catch(() => console.error(`Could not create userDataDir "${userDataDir}"`));
 
 		const envVars   = {HOME: userDataDir, DISPLAY: ':0'};
+		//*/
 		const launch    = createPath.then(() => cl.launch({chromePath, chromeFlags, userDataDir, envVars}));
 		const getClient = launch.then(chrome => cdp({port:chrome.port}).then(client => [chrome, client]));
+		/*/
+		const getClient = launchFirefox({chromeFlags, flags})
+		.then(chrome => cdp({port:chrome.port}).then(client => [chrome, client]));
+		//*/
 
 		return getClient.then(
 			([chrome, client]) => client.Page.enable()
@@ -144,12 +204,11 @@ module.exports = class
 
 	goto(url)
 	{
-		return this.client.Page.navigate({url}).then(()=> this.client.Page.loadEventFired());
-	}
-
-	loaded()
-	{
-		return this.client.Page.loadEventFired();
+		return new Promise(accept => {
+			this.client.Page.navigate({url});
+			// if(url.substr(0,5) === 'file:') setTimeout(accept, 1000);
+			this.onNextPageLoad.add(accept);
+		});
 	}
 
 	inject(injection, ...args)
@@ -171,7 +230,16 @@ module.exports = class
 			}
 		})()`;
 
-		return this.client.Runtime.compileScript({ expression, sourceURL: `<injection#${this.injectCount++}>`, persistScript: true })
+		// return this.client.Runtime.evaluate({ expression, awaitPromise:true })
+		// .then(response => {
+		// 	if(response.exceptionDetails)
+		// 	{
+		// 		throw response;
+		// 	}
+		// 	return response.result.value;
+		// });
+
+		return this.client.Runtime.compileScript({ expression, persistScript: true, sourceURL: injection.name || `<injection#${this.injectCount++}>`})
 		.then(script => this.client.Runtime.runScript({scriptId: script.scriptId, awaitPromise:true}))
 		.then(response => {
 			if(response.exceptionDetails)
@@ -352,17 +420,18 @@ module.exports = class
 
 	addModule(name, injection)
 	{
-		const expression = `require.register("${name}", (exports, require, module) => { module.exports.__esModule = true; module.exports = module.exports.default = ${injection}; });`;
+		const expression = `require.register(${JSON.stringify(name)}, (exports, require, module) => { module.exports.__esModule = true; module.exports = module.exports.default = ${injection}; } );`;
 
 		const Runtime = this.client.Runtime;
-
-		return Runtime.compileScript({expression, sourceURL: `<${name}>`, persistScript: true})
-		.then(script => Runtime.runScript({scriptId: script.scriptId}));
+		// return Runtime.evaluate({expression, awaitPromise:true});
+		return Runtime
+		.compileScript({expression, persistScript: true, sourceURL: `<${name}>`})
+		.then(script => Runtime.runScript({scriptId: script.scriptId, awaitPromise:true}));
 	}
 
 	addModules(modules)
 	{
-		return Promise.all(modules.map(m => this.addModule(...m)))
+		return Promise.all(modules.map(m => this.addModule(...m)));
 	}
 
 	[CallBindings]({name, payload})
@@ -396,9 +465,23 @@ module.exports = class
 
 	startCoverage()
 	{
-		return this.client.Profiler.setSamplingInterval({interval:1})
-		.then(() => this.client.Profiler.enable())
+		return this.client.Profiler.enable()
+		.then(() => this.client.Profiler.setSamplingInterval({interval:1}))
 		.then(() => this.client.Profiler.startPreciseCoverage({callCount: true, detailed: true}));
+	}
+
+	[CallPageLoad](event)
+	{
+		for(const handler of this.onNextPageLoad)
+		{
+			this.onNextPageLoad.delete(handler);
+			handler(event);
+		}
+
+		for(const handler of this.onPageLoad)
+		{
+			handler(event);
+		}
 	}
 
 	takeCoverage()
@@ -454,6 +537,24 @@ module.exports = class
 		}
 
 		return Promise.reject(`Unknown type: "${objectIdent.type}"`);
+	}
+
+	getStackTrace(error)
+	{
+		if(!error.result || !error.exceptionDetails || !error.exceptionDetails.stackTrace || !error.exceptionDetails.stackTrace.callFrames)
+		{
+			return Promise.reject('Object does not refer to a stack trace');
+		}
+
+		konsole.log(error.exceptionDetails.stackTrace);
+
+		return this.getObject(error.result).then(message => {
+			const lines = error.exceptionDetails.stackTrace.callFrames.map(frame => frame.functionName
+				? `${frame.functionName} (${frame.url||'<anonymous>'}:${frame.lineNumber}:${frame.columnNumber})`
+				: `${frame.url||'<anonymous>'}:${frame.lineNumber}:${frame.columnNumber}`
+			);
+			return `${error.exceptionDetails.text} "${message}"\nat ${lines.join('\nat ')}`;
+		});
 	}
 };
 
