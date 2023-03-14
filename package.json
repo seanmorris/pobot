@@ -1,7 +1,7 @@
 {
   "name": "pobot",
   "description": "Promise oriented chromebot",
-  "version": "0.0.13a",
+  "version": "0.0.13-c",
   "author": "Sean Morris",
   "license": "Apache-2.0",
   "preferglobal": true,

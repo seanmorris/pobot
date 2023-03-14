@@ -13,8 +13,6 @@ const rimraf        = require("rimraf");
 const child_process = require('child_process');
 const readline      = require('readline');
 
-const userDataDir = os.tmpdir() + '/.chrome-user';
-
 const defaultFlags  = {
 	'--enable-automation': true
 	, '--hide-scrollbars': true
@@ -33,56 +31,14 @@ const CallPageLoad = Symbol('CallPageLoad');
 
 const konsole = new Console({stdout: process.stderr, stderr: process.stderr});
 
-const launchFirefox = ({port, flags} = {}) => {
-
-	const findPort = port ? Promise.resolve(port) : new Promise(accept => {
-		const proc   = child_process.exec(`netstat -tunlep | grep LISTEN | awk '{print $4}' | perl -pe 's/.+://' | sort -n`);
-		const reader = readline.createInterface({input:proc.stdout});
-
-		const usedPorts = new Set;
-
-		reader.on('line',  line => usedPorts.add(Number(line)));
-		reader.on('close', () => {
-			const maxPort = 2**16;
-			const minPort = 2**10;
-
-			let port = minPort + Math.trunc((maxPort - minPort) * Math.random())
-
-			while(usedPorts.has(port))
-			{
-				port++
-			}
-
-			accept(port);
-		});
-	});
-
-	return findPort.then(port => {
-		const proc = child_process.spawn('/usr/bin/env', ['-S', 'firefox', '--remote-debugging-port',  Number(port), `--url`, `${JSON.parse(flags['--url'])}`]);
-		const pid     = proc.pid;
-		const kill    = () => proc.kill();
-
-		const browser = {pid, kill, port, process:proc};
-
-		const reader = readline.createInterface({input:proc.stderr});
-
-		return new Promise(accept => {
-			reader.on('line', line => {
-				if(line.substr(0, 18) === 'DevTools listening')
-				{
-					accept(browser);
-				}
-			});
-		});
-	});
-};
+const AdapterChrome  = require('./AdapterChrome');
+const AdapterFirefox = require('./AdapterFirefox');
 
 module.exports = class
 {
-	constructor(client, chrome)
+	constructor(adapter)
 	{
 		this.hasConsole  = false;
-		this.hasBindings = false;
 		this.injectCount = 0;
 
 		Object.defineProperties(this, {
@@ -91,15 +47,16 @@ module.exports = class
 			, onPageLoad:     {value: new Set}
 			, bindings:       {value: new Map}
 			, pending:        {value: new Map}
-			, client:         {value: client}
-			, chrome:         {value: chrome}
+			, client:         {value: adapter.client}
+			, chrome:         {value: adapter.browser}
+			, adapter:        {value: adapter}
 			, init:           {value: new Map}
 		});
 
-		client.Page.loadEventFired(event => this[CallPageLoad](event));
+		this.client.Page.loadEventFired(event => this[CallPageLoad](event));
 	}
 
-	static get(args, chromePath)
+	static get(args, adapter = new AdapterChrome)
 	{
 		const flags = {...defaultFlags};
 
@@ -128,34 +85,14 @@ module.exports = class
 			return `${key}=${flags[key]}`;
 		});
 
-		const createPath = new Promise(accept => {
-			try
-			{
-				return rimraf(userDataDir, () => accept(fsp.mkdir(userDataDir)));
-			}
-			catch(error)
-			{
-				return accept(fsp.mkdir(userDataDir));
-			}
-		});
+		const envVars = {HOME: '/tmp', DISPLAY: ':0'};
 
-		createPath.catch(() => console.error(`Could not create userDataDir "${userDataDir}"`));
+		// const adapter = new AdapterFirefox;
+		// const adapter = new AdapterChrome;
 
-		const envVars   = {HOME: userDataDir, DISPLAY: ':0'};
-		//*/
-		const launch    = createPath.then(() => cl.launch({chromePath, chromeFlags, userDataDir, envVars}));
-		const getClient = launch.then(chrome => cdp({port:chrome.port}).then(client => [chrome, client]));
-		/*/
-		const getClient = launchFirefox({chromeFlags, flags})
-		.then(chrome => cdp({port:chrome.port}).then(client => [chrome, client]));
-		//*/
+		const getClient = adapter.getClient({chromeFlags, flags, envVars});
 
-		return getClient.then(
-			([chrome, client]) => client.Page.enable()
-			.then(()=> client.Network.enable())
-			.then(()=> client.Runtime.enable())
-			.then(()=> new this(client, chrome))
-		);
+		return getClient.then(() => new this(adapter));
 	}
 
 	run(args)
@@ -213,41 +150,7 @@ module.exports = class
 
 	inject(injection, ...args)
 	{
-		const expression = `(()=> {
-			let ret = (${injection})(...${JSON.stringify(args)});
-
-			if(ret instanceof Promise)
-			{
-				return ret;
-			}
-			else if(typeof ret === 'object')
-			{
-				return JSON.stringify(ret)
-			}
-			else
-			{
-				return ret;
-			}
-		})()`;
-
-		// return this.client.Runtime.evaluate({ expression, awaitPromise:true })
-		// .then(response => {
-		// 	if(response.exceptionDetails)
-		// 	{
-		// 		throw response;
-		// 	}
-		// 	return response.result.value;
-		// });
-
-		return this.client.Runtime.compileScript({ expression, persistScript: true, sourceURL: injection.name || `<injection#${this.injectCount++}>`})
-		.then(script => this.client.Runtime.runScript({scriptId: script.scriptId, awaitPromise:true}))
-		.then(response => {
-			if(response.exceptionDetails)
-			{
-				throw response;
-			}
-			return response.result.value;
-		});
+		return this.adapter.inject(injection, ...args);
 	}
 
 	type(keys, delay = 10)
@@ -397,20 +300,7 @@ module.exports = class
 
 	addBinding(name, callback)
 	{
-		if(!this.hasBindings)
-		{
-			this.client.Runtime.bindingCalled(event => this[CallBindings](event));
-			this.hasBindings = true;
-		}
-
-		if(this.bindings.has(name))
-		{
-			console.error(`Warning: overwriting binding "${name}".`);
-		}
-
-		this.bindings.set(name, callback);
-
-		return this.client.Runtime.addBinding({name});
+		return this.adapter.addBinding(name, callback);
 	}
 
 	addBindings(bindings)
@@ -420,25 +310,12 @@ module.exports = class
 
 	addModule(name, injection)
 	{
-		const expression = `require.register(${JSON.stringify(name)}, (exports, require, module) => { module.exports.__esModule = true; module.exports = module.exports.default = ${injection}; } );`;
-
-		const Runtime = this.client.Runtime;
-		// return Runtime.evaluate({expression, awaitPromise:true});
-		return Runtime
-		.compileScript({expression, persistScript: true, sourceURL: `<${name}>`})
-		.then(script => Runtime.runScript({scriptId: script.scriptId, awaitPromise:true}));
+		return this.adapter.addModule(name, injection);
 	}
 
 	addModules(modules)
 	{
 		return Promise.all(modules.map(m => this.addModule(...m)));
-	}
-
-	[CallBindings]({name, payload})
-	{
-		const args = JSON.parse(payload);
-		const callback = this.bindings.get(name);
-		return callback(...args);
 	}
 
 	addConsoleHandler(handlers)
@@ -463,13 +340,6 @@ module.exports = class
 		}
 	}
 
-	startCoverage()
-	{
-		return this.client.Profiler.enable()
-		.then(() => this.client.Profiler.setSamplingInterval({interval:1}))
-		.then(() => this.client.Profiler.startPreciseCoverage({callCount: true, detailed: true}));
-	}
-
 	[CallPageLoad](event)
 	{
 		for(const handler of this.onNextPageLoad)
@@ -484,14 +354,24 @@ module.exports = class
 		}
 	}
 
+	getVersion()
+	{
+		return this.client.Browser.getVersion();
+	}
+
+	startCoverage()
+	{
+		return this.adapter.startCoverage();
+	}
+
 	takeCoverage()
 	{
-		return this.client.Profiler.takePreciseCoverage();
+		return this.adapter.takeCoverage();
 	}
 
 	stopCoverage()
 	{
-		return this.client.Profiler.stopPreciseCoverage();
+		return this.adapter.stopCoverage();
 	}
 
 	close()
@@ -504,8 +384,24 @@ module.exports = class
 		return this.chrome.kill();
 	}
 
-	getObject(objectIdent)
+	getObject(objectIdent, maxDepth = 3, depth = 0)
 	{
+		if(depth > maxDepth)
+		{
+			return Promise.resolve(`maxDepth reached.`);
+		}
+
+		if(!objectIdent)
+		{
+			return Promise.resolve(`Unknown objectIdent type: "${typeof objectIdent}"`);
+			return Promise.resolve(null);
+		}
+
+		if('unserializableValue' in objectIdent)
+		{
+			return Promise.resolve(objectIdent.unserializableValue);
+		}
+
 		switch(objectIdent.type)
 		{
 			case 'object':
@@ -515,14 +411,17 @@ module.exports = class
 
 					const getObjectProperties = result
 					.filter(property => property.enumerable)
-					.map(property => this.getObject(property.value).then(value => ({[property.name]: value})));
+					.map(property => this.getObject(property.value, maxDepth, 1+depth).then(value => ({[property.name]: value})));
 
 					const collectProprerties = Promise.all(getObjectProperties)
 					.then(p => p.reduce((a,b) => ({...a, ...b}), {}));
 
 					if(objectIdent.subtype === 'array')
 					{
-						return collectProprerties.then(properties => Object.assign([], properties));
+						return collectProprerties.then(properties => {
+							delete properties.length;
+							return Object.assign([], properties)
+						});
 					}
 
 					return collectProprerties;
@@ -536,7 +435,9 @@ module.exports = class
 				break;
 		}
 
-		return Promise.reject(`Unknown type: "${objectIdent.type}"`);
+		return Promise.resolve(`Unknown type: "${objectIdent.type}"`);
+
+		return Promise.resolve(null);
 	}
 
 	getStackTrace(error)
@@ -546,7 +447,7 @@ module.exports = class
 			return Promise.reject('Object does not refer to a stack trace');
 		}
 
-		konsole.log(error.exceptionDetails.stackTrace);
+		// konsole.log(error.exceptionDetails.stackTrace);
 
 		return this.getObject(error.result).then(message => {
 			const lines = error.exceptionDetails.stackTrace.callFrames.map(frame => frame.functionName
