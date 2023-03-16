@@ -1,15 +1,11 @@
 "use strict";
 
-const cl  = require('chrome-launcher');
-const cdp = require('chrome-remote-interface');
-
 const os  = require('os');
 const fs  = require("fs");
 const fsp = fs.promises;
 
 const { Console } = require('console');
 
-const rimraf        = require("rimraf");
 const child_process = require('child_process');
 const readline      = require('readline');
 
@@ -432,6 +428,11 @@ module.exports = class
 			case 'boolean':
 			case 'function':
 				return Promise.resolve(objectIdent.value);
+
+			case 'null':
+			case 'symbol':
+			case 'undefined':
+				return Promise.resolve(objectIdent.type);
 				break;
 		}
 

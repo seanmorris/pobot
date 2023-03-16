@@ -3,11 +3,12 @@ const cl  = require('chrome-launcher');
 const cdp = require('chrome-remote-interface');
 const fs  = require("fs");
 const fsp = fs.promises;
-const rimraf = require("rimraf");
 
 const CallBindings = Symbol('CallBindings');
 
-const defaultUserDataDir = os.tmpdir() + '/.chrome-user';
+const userDirectories = new Set;
+
+process.on('exit', code => userDirectories.forEach(d => fs.rmdirSync(d, {recursive:true})));
 
 module.exports = class
 {
@@ -16,6 +17,15 @@ module.exports = class
 
 	constructor({userDataDir, chromePath}={})
 	{
+		const uuid = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(
+			/[018]/g
+			, c => (
+				c ^ parseInt(Math.random() * 255) & 15 >> c / 4
+			).toString(16)
+		);
+
+		const defaultUserDataDir = os.tmpdir() + '/.chrome-user/' + uuid;
+
 		this.userDataDir = userDataDir || defaultUserDataDir;
 		this.chromePath  = chromePath;
 
@@ -26,19 +36,15 @@ module.exports = class
 
 	getClient({chromeFlags, envVars})
 	{
-		const createPath = new Promise(accept => {
-			try
-			{
-				return rimraf(this.userDataDir, () => accept(fsp.mkdir(this.userDataDir)));
-			}
-			catch(error)
-			{
-				return accept(fsp.mkdir(this.userDataDir));
-			}
-		})
+		const createPath = fsp.access(this.userDataDir)
+		.then( () => fsp.rm(this.userDataDir, {recursive:true}))
+		.catch(() => fsp.mkdir(this.userDataDir))
 		.catch(() => console.error(`Could not create userDataDir "${this.userDataDir}"`));
 
-		const getClient = createPath.then(() => cl.launch({chromePath:this.chromePath, chromeFlags, userDataDir:this.userDataDir, envVars}))
+		userDirectories.add(this.userDataDir);
+
+		const getClient = createPath
+		.then(() => cl.launch({chromePath:this.chromePath, chromeFlags, userDataDir:this.userDataDir, envVars}))
 		.then(chrome => cdp({port:chrome.port}).then(client => [chrome, client]));
 
 		return getClient.then(

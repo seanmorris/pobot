@@ -2,6 +2,7 @@ const os  = require('os');
 const cdp = require('chrome-remote-interface');
 const child_process = require('child_process');
 const readline      = require('readline');
+
 const launchFirefox = ({port, flags, chromeFlags} = {}) => {
 
 	const findPort = port ? Promise.resolve(port) : new Promise(accept => {
