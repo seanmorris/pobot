@@ -38,7 +38,7 @@ module.exports = class
 	{
 		const createPath = fsp.access(this.userDataDir)
 		.then( () => fsp.rm(this.userDataDir, {recursive:true}))
-		.catch(() => fsp.mkdir(this.userDataDir))
+		.catch(() => fsp.mkdir(this.userDataDir, {recursive:true}))
 		.catch(() => console.error(`Could not create userDataDir "${this.userDataDir}"`));
 
 		userDirectories.add(this.userDataDir);
