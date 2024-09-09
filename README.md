@@ -47,8 +47,9 @@ and can be used with scripts like so:
 pobot ./relative-path-to/script.js
 ```
 
-Scripts are formatted like modules and may export functions or promises:
+Scripts are formatted like modules and may export functions or promises.
 
+*example/npmSearch.mjs:*
 ```javascript
 const populateSearch = (keyword) => {
     const field = document.querySelector('#search input[type="search"]');
@@ -76,6 +77,10 @@ export default async (client, args) => {
     console.log('Waiting 5 seconds...');
     await new Promise(a => setTimeout(a, 5000));
 };
+```
+
+```bash
+$ npx pobot example/npmSearch.mjs
 ```
 
 ## Pobot
