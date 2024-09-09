@@ -1,7 +1,7 @@
-const os  = require('os');
-const cdp = require('chrome-remote-interface');
-const child_process = require('child_process');
-const readline      = require('readline');
+import os from 'node:os';
+import cdp from 'chrome-remote-interface';
+import { ChildProcess as child_process } from 'node:child_process';
+import readline from 'node:readline';
 
 const launchFirefox = ({port, flags, chromeFlags} = {}) => {
 
@@ -49,7 +49,7 @@ const launchFirefox = ({port, flags, chromeFlags} = {}) => {
 
 const userDataDir = os.tmpdir() + '/.chrome-user';
 
-module.exports = class
+export class AdapterFirefox
 {
 	constructor({userDataDir, chromePath}={})
 	{

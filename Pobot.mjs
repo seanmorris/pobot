@@ -1,13 +1,15 @@
 "use strict";
 
-const os  = require('os');
-const fs  = require("fs");
+import os from 'node:os';
+import fs from 'node:fs';
+import { Console } from 'node:console';
+import { ChildProcess as child_process } from 'node:child_process';
+import readline from 'node:readline';
+
+import { AdapterChrome } from './AdapterChrome.mjs';
+import { AdapterFirefox } from './AdapterFirefox.mjs';
+
 const fsp = fs.promises;
-
-const { Console } = require('console');
-
-const child_process = require('child_process');
-const readline      = require('readline');
 
 const defaultFlags  = {
 	'--enable-automation': true
@@ -27,10 +29,7 @@ const CallPageLoad = Symbol('CallPageLoad');
 
 const konsole = new Console({stdout: process.stderr, stderr: process.stderr});
 
-const AdapterChrome  = require('./AdapterChrome');
-const AdapterFirefox = require('./AdapterFirefox');
-
-module.exports = class
+export class Pobot
 {
 	constructor(adapter)
 	{
@@ -93,7 +92,7 @@ module.exports = class
 
 	run(args)
 	{
-		let iterate = () => {
+		const iterate = async () => {
 			if(!args.length)
 			{
 				this.close();
@@ -109,9 +108,11 @@ module.exports = class
 
 			console.error(`Running ${name}...`);
 
-			let routine = require(process.cwd() + '/' + name);
+			try
+			{
+				const { default: routine } = await import(process.cwd() + '/' + name);
 
-			routine(this, args).then((result) => {
+				const result = await routine(this, args);
 
 				console.error(`Done with ${name}.`);
 
@@ -121,15 +122,13 @@ module.exports = class
 				}
 
 				iterate();
-			}).catch((error) => {
+			}
+			catch(error)
+			{
 				console.error(`Error! ${JSON.stringify(error)}`);
-
 				this.close();
-
 				process.exitCode = 1;
-
-				return;
-			});
+			}
 		};
 
 		return iterate();
@@ -460,6 +459,4 @@ module.exports = class
 	}
 };
 
-Object.defineProperty(module.exports, 'chromePath', {value: undefined, writable: true});
-
-return module;
+Object.defineProperty(Pobot, 'chromePath', {value: undefined, writable: true});

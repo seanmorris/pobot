@@ -1,7 +1,7 @@
-const os  = require('os');
-const cl  = require('chrome-launcher');
-const cdp = require('chrome-remote-interface');
-const fs  = require("fs");
+import os from 'node:os';
+import cl from 'chrome-launcher';
+import cdp from 'chrome-remote-interface';
+import fs from 'node:fs';
 const fsp = fs.promises;
 
 const CallBindings = Symbol('CallBindings');
@@ -10,7 +10,7 @@ const userDirectories = new Set;
 
 process.on('exit', code => userDirectories.forEach(d => fs.rmdirSync(d, {recursive:true})));
 
-module.exports = class
+export class AdapterChrome
 {
 	hasBindings = false;
 	bindings    = new Map;

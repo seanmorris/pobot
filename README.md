@@ -15,36 +15,22 @@ Pobot is still in very heavy alpha. Its API has a lot of pipes and wires stickin
 In the example below, we navigate to a page and `then` inject some javascript. **PLEASE NOTE** In the code, it looks like a normal callback is passed to `pobot.inject()`. This is simply for the convenience of syntax highlighting in the editor ONLY. The callback passed here will be converted to a string behing the scenes and run in another JS environment ENTIRELY (the webpage). Of course, normal namespacing rules will NOT apply.
 
 ```javascript
-Pobot.get([]).then(pobot=>{
+(async () => {
+	const pobot = await Pobot.get([]);
 
-	pobot.goto('https:google.com').then(() => {
+	await pobot.goto('https:google.com');
 
-		return pobot.inject(() => {
-
-			document.querySelector('input[type=text]').value = 'Sean Morris';
-			document.querySelector('input[type=submit]').click();
-
-		}).then(()=>{
-
-			return pobot.loaded();
-
-		});
-
-	}).then(() => {
-
-		return pobot.inject(() => {
-
-			return document.querySelector('#search a').innerText.trim();
-
-		}).then( linkText => {
-
-			accept(linkText);
-
-		});
-
+	await pobot.inject(() => {
+		document.querySelector('input[type=text]').value = 'Sean Morris';
+		document.querySelector('input[type=submit]').click();
 	});
 
-});
+	await pobot.loaded();
+
+	const linkText = await pobot.inject(() => {
+		return document.querySelector('#search a').innerText.trim();
+	});
+})();
 ```
 
 ### CLI
@@ -52,92 +38,45 @@ Pobot.get([]).then(pobot=>{
 Pobot can be installed globally via:
 
 ```bash
-$ npm install -g pobot
+npm install -g pobot
 ```
 
 and can be used with scripts like so:
 
 ```bash
-$ pobot ./relative-path-to/script.js
+pobot ./relative-path-to/script.js
 ```
 
 Scripts are formatted like modules and may export functions or promises:
 
 ```javascript
-const readline = require('readline');
-
 const populateSearch = (keyword) => {
 	const field = document.querySelector('#search input[type="search"]');
-
-	if(!field)
-	{
-		return;
-	}
-
+	if(!field) return;
 	field.value = keyword;
+	return true;
 };
 
 const peformSearch = () => {
 	const button = document.querySelector('#search button[type="submit"]');
-
 	button.click();
+	return true;
 };
 
-const clickFirstLink = () => {
-
-	document.querySelector('.center-ns a').click();
-
-};
-
-module.exports = (pobot, args) => new Promise((accept,reject)=>{
-
+export default async (client, args) => {
 	console.log('Opening npmjs.com...');
+	await client.goto('http://npmjs.com');
 
-	pobot.goto('http://npmjs.com').then(()=>{
-		return new Promise((accept,reject)=>{
+	console.log('Populating keyword...');
+	await client.inject(populateSearch, ['pobot']);
 
-			const rli = readline.createInterface({
-			  input: process.stdin,
-			  output: process.stdout
-			});
+	console.log('Performing search for "pobot"...');
+	await client.inject(peformSearch);
 
-			rli.question('keyword:', (answer) => {
-
-				rli.close();
-
-				accept(answer)
-
-			});
-		});
-
-	}).then((keyword)=>{
-
-		console.log('Populating keyword...');
-		return pobot.inject(
-			populateSearch
-			, [keyword || args.shift() || 'pobot']
-		);
-
-	}).then(()=>{
-
-		console.log('Performing search...');
-		return pobot.inject(peformSearch);
-
-	}).then(()=>{
-
-		console.log('Clicking first link...');
-
-		setTimeout(() => { pobot.inject(clickFirstLink) }, 500);
-
-	}).then(()=>{
-
-		setTimeout(() => { accept('Done!.'); }, 5000);
-
-	});
-
-});
-````
-
+	console.log('Waiting 5 seconds...');
+	await new Promise(a => setTimeout(a, 5000));
+};
+```
 
 ## Pobot
 
