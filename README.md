@@ -4,8 +4,6 @@
 
 Promise-oriented Chrome automator.
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/seanmorris/pobot?logo=docker&logoColor=white&color=960&label=ids.server%20pulls&style=for-the-badge)](https://hub.docker.com/repository/docker/seanmorris/pobot)
-
 *Pobot is now ESM compliant!*
 
 ## Usage
