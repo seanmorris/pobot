@@ -75,7 +75,7 @@ const injection = (selector) => {
     };
 };
 
-const {linkText, linkUrl} = await pobot.inject(injection, '#search a');
+const {linkText, linkUrl} = await pobot.inject(injection, '#querySelectorHere');
 ```
 
 ### pobot.loaded()
@@ -118,7 +118,7 @@ const html = await pobot.getHTML();
 ```
 
 ```javascript
-const html = await pobot.getHTML('#elementID');
+const html = await pobot.getHTML('#querySelectorHere');
 ```
 ### pobot.getScreenshot({filename, type = 'png'})
 
@@ -157,17 +157,108 @@ await pobot.addInit(callback);
 await pobot.removeInit(callback);
 ```
 
-### pobot.addBinding()
-### pobot.removeBinding()
-### pobot.addBindings()
-### pobot.addModule()
+### pobot.addBinding(name, callback)
+
+Add a callback to the global scope of the page using the given name.
+
+```javascript
+pobot.addBinding('someCallback', () =>
+    console.log('Callback invoked from page!');
+});
+```
+
+### pobot.addBindings(bindings)
+
+Add multiple callback to the global scope of the page using the given name.
+
+```javascript
+pobot.addBindings({
+    'someCallback': () => console.log('Callback invoked from page!'),
+    'otherCallback': () => console.log('Other callback invoked from page!'),
+});
+```
+
 ### pobot.addConsoleHandler(handler)
+
+Add listeners for `console.log` and similar functions. Takes an object keyed by the name of the methods to be subscribed to.
+
+```javascript
+pobot.addBindings({
+    log: () => console.log('Console.log invoked from page!'),
+    error: () => console.error('Console.error invoked from page!'),
+});
+```
+
+You can also pass the special property `!` to catch any other unhandled methods, or `*` to listen for ALL console methods:
+
+```javascript
+pobot.addBindings({
+    log: () => console.log('Console.log invoked from page!'),
+    error: () => console.error('Console.error invoked from page!'),
+    '!': () => console.error('Other console method invoked from page!'),
+});
+```
+
 ### pobot.getVersion()
+
+Get the version of the browser being controlled.
+
+```javascript
+const verion = await pobot.getVersion();
+```
+```javascript
+{
+  verion: {
+    protocolVersion: '1.3',
+    product: 'Chrome/127.0.6533.99',
+    revision: '@f31af5097d90ef5ae5bd7b8700199bc6189ba34d',
+    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+    jsVersion: '12.7.224.18'
+  }
+}
+```
+
 ### pobot.startCoverage()
+
+Start logging code coverage.
+
+```javascript
+await pobot.startCoverage()
+```
+
 ### pobot.takeCoverage()
+
+Get logged code coverage.
+
+```javascript
+const coverage = await pobot.takeCoverage()
+```
+
 ### pobot.stopCoverage()
+
+Stop logging code coverage.
+
+```javascript
+await pobot.stopCoverage()
+```
+
 ### pobot.close()
+
+Close the browser tab.
+
+```javascript
+pobot.close()
+```
+
 ### pobot.kill()
+
+Kill the browser.
+
+```javascript
+pobot.kill()
+```
+
+### pobot.addModule()
 
 ### CLI
 

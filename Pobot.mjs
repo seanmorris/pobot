@@ -1,8 +1,5 @@
-import os from 'node:os';
 import fs from 'node:fs';
 import { Console } from 'node:console';
-import { ChildProcess as child_process } from 'node:child_process';
-import readline from 'node:readline';
 
 import { AdapterChrome } from './AdapterChrome.mjs';
 import { AdapterFirefox } from './AdapterFirefox.mjs';
@@ -51,7 +48,7 @@ export class Pobot
 		this.client.Page.loadEventFired(event => this[CallPageLoad](event));
 	}
 
-	static get(args = [], adapter = new AdapterChrome)
+	static async get(args = [], adapter = new AdapterChrome)
 	{
 		const flags = {...defaultFlags};
 
@@ -85,9 +82,9 @@ export class Pobot
 		// const adapter = new AdapterFirefox;
 		// const adapter = new AdapterChrome;
 
-		const getClient = adapter.getClient({chromeFlags, flags, envVars});
+		await adapter.getClient({chromeFlags, flags, envVars});
 
-		return getClient.then(() => new this(adapter));
+		return new this(adapter);
 	}
 
 	run(args)
@@ -293,7 +290,9 @@ export class Pobot
 
 	addBindings(bindings)
 	{
-		return Promise.all(bindings.map(b => this.addBinding(...b)))
+		return Promise.all(
+			Object.entries(bindings).map(b => this.addBinding(...b))
+		);
 	}
 
 	addModule(name, injection)
@@ -311,7 +310,6 @@ export class Pobot
 		if(!this.hasConsole)
 		{
 			this.client.Runtime.consoleAPICalled(event => this[CallConsole](event));
-
 			this.hasConsole = true;
 		}
 
@@ -364,7 +362,7 @@ export class Pobot
 
 	close()
 	{
-		return this.client.close();
+		return this.client.close({id: this.client.target.id });
 	}
 
 	kill()

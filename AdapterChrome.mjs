@@ -34,7 +34,7 @@ export class AdapterChrome
 		this.hasBindings = false;
 	}
 
-	getClient({chromeFlags, envVars})
+	async getClient({chromeFlags, envVars})
 	{
 		const createPath = fsp.access(this.userDataDir)
 		.then( () => fsp.rm(this.userDataDir, {recursive:true}))
@@ -43,20 +43,25 @@ export class AdapterChrome
 
 		userDirectories.add(this.userDataDir);
 
-		const getClient = createPath
-		.then(() => cl.launch({chromePath:this.chromePath, chromeFlags, userDataDir:this.userDataDir, envVars}))
-		.then(chrome => cdp({port:chrome.port}).then(client => [chrome, client]));
+		await createPath;
 
-		return getClient.then(
-			([chrome, client]) => client.Page.enable()
-			.then(() => client.Network.enable())
-			.then(() => client.Runtime.enable())
-			.then(() => {
-				this.browser = chrome;
-				this.client  = client;
-				return getClient;
-			})
-		);
+		const chrome = await cl.launch({
+			chromePath:this.chromePath,
+			chromeFlags,
+			userDataDir:this.userDataDir,
+			envVars
+		});
+
+		const client = await cdp({port: chrome.port});
+
+		await client.Page.enable();
+		await client.Network.enable();
+		await client.Runtime.enable();
+
+		this.browser = chrome;
+		this.client  = client;
+
+		return [chrome, client];
 	}
 
 	async inject(injection, ...args)
