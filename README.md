@@ -67,7 +67,7 @@ Async, will execute a callback in the context of the page. Return values must be
 Optional args must also be JSON serializable.
 
 ```javascript
-const injection = (selector) => {
+const getLink = (selector) => {
     const link = document.querySelector(selector);
     return {
         linkText: link.innerText.trim(),
@@ -75,7 +75,7 @@ const injection = (selector) => {
     };
 };
 
-const {linkText, linkUrl} = await pobot.inject(injection, '#querySelectorHere');
+const {linkText, linkUrl} = await pobot.inject(getLink, '#querySelectorHere');
 ```
 
 ### pobot.loaded()
