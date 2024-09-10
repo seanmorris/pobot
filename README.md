@@ -1,4 +1,4 @@
-# [![seanmorris/pobot](https://avatars3.githubusercontent.com/u/640101?s=80&v=4)](https://github.com/seanmorris/pobot) Pobot
+# [![seanmorris/pobot](https://raw.githubusercontent.com/seanmorris/php-wasm/master/docs/sean-icon.png)](https://github.com/seanmorris/pobot) Pobot
 
 Promise-oriented Chrome automator.
 
