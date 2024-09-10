@@ -208,13 +208,11 @@ const verion = await pobot.getVersion();
 ```
 ```javascript
 {
-  verion: {
     protocolVersion: '1.3',
     product: 'Chrome/127.0.6533.99',
     revision: '@f31af5097d90ef5ae5bd7b8700199bc6189ba34d',
     userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
     jsVersion: '12.7.224.18'
-  }
 }
 ```
 
