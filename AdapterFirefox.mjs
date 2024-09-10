@@ -78,31 +78,20 @@ export class AdapterFirefox
 
 	inject(injection, ...args)
 	{
-		const expression = `(()=> {
-			let ret = (${injection})(...${JSON.stringify(args)});
+		const expression = `(async ()=> { return JSON.stringify(await (${injection})(...${JSON.stringify(args)})); })()`;
+		const response = this.client.Runtime.evaluate({ expression, awaitPromise:true });
 
-			if(ret instanceof Promise)
-			{
-				return ret;
-			}
-			else if(typeof ret === 'object')
-			{
-				return JSON.stringify(ret)
-			}
-			else
-			{
-				return ret;
-			}
-		})()`;
+		if(response.result.type === 'undefined')
+		{
+			return undefined;
+		}
 
-		return this.client.Runtime.evaluate({ expression, awaitPromise:true })
-		.then(response => {
-			if(response.exceptionDetails)
-			{
-				throw response;
-			}
-			return response.result.value;
-		});
+		if(response.result.type === 'string')
+		{
+			return JSON.parse(response.result.value);
+		}
+
+		return response.result.value;
 	}
 
 	addBinding(name, callback)
