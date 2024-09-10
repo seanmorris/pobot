@@ -48,6 +48,11 @@ export class Pobot
 		this.client.Page.loadEventFired(event => this[CallPageLoad](event));
 	}
 
+	/**
+	 * Get an instance of Pobot.
+	 * @param {any[]} args
+	 * @returns {Promise<Pobot>} a new instance of Pobot.
+	 */
 	static async get(args = [], adapter = new AdapterChrome)
 	{
 		const flags = {...defaultFlags};
@@ -87,7 +92,12 @@ export class Pobot
 		return new this(adapter);
 	}
 
-	run(args)
+	/**
+	 * Run some Pobot scripts
+	 * @param {string[]} scripts List of module names to be run as Pobot scripts.
+	 * @returns {Promise<null>} Resolves when scripts are complete.
+	 */
+	run(scripts)
 	{
 		const iterate = async () => {
 			if(!args.length)
@@ -100,7 +110,7 @@ export class Pobot
 
 			while(!name)
 			{
-				name = args.shift();
+				name = scripts.shift();
 			}
 
 			console.error(`Running ${name}...`);
@@ -131,6 +141,11 @@ export class Pobot
 		return iterate();
 	}
 
+	/**
+	 * Navigate to a page.
+	 * @param {string} url
+	 * @returns {Promise<null>} Resolves when the new page loads.
+	 */
 	goto(url)
 	{
 		return new Promise(accept => {
@@ -140,16 +155,35 @@ export class Pobot
 		});
 	}
 
+	/**
+	 * Wait for a page to load.
+	 * Meant to be called after navigation is triggered.
+	 * @returns {Promise<null>} Resolves when the new page loads.
+	 */
 	loaded()
 	{
 		return new Promise(accept => this.onNextPageLoad.add(accept));
 	}
 
+	/**
+	 * Run a callback in the context of the page.
+	 * Return value and arguments are optional, and if present
+	 * must be JSON-serializable.
+	 * @param {function(...any):any} injection
+	 * @param  {...any} args
+	 * @returns {Promise<any>}
+	 */
 	inject(injection, ...args)
 	{
 		return this.adapter.inject(injection, ...args);
 	}
 
+	/**
+	 * Type some text with a virtual keyboard.
+	 * @param {string|array} keys Keys to press.
+	 * @param {number} delayTime Milliseonds to wait between virtual key events.
+	 * @returns {Promise<null>} Resolves when typing is complete.
+	 */
 	async type(keys, delayTime = 10)
 	{
 		keys = [...keys];
@@ -188,6 +222,16 @@ export class Pobot
 		}
 	}
 
+	/**
+	 * Click on a point with a virtual pointer.
+	 * @param {number} x The X position in the viewport.
+	 * @param {number} y The Y position in the viewport.
+	 * @param {number} delayTime Milliseonds to wait between virtual mouse events.
+	 * @param {number} param3.buttons 0x1|0x2|0x4... left|right|middle
+	 * @param {number} param3.endX The X position to drag to in the viewport.
+	 * @param {number} param3.endY The Y position to drag to in the viewport.
+	 * @returns {Promise<null>} Resolves when the click (or drag) is complete.
+	 */
 	async click(x, y, delayTime = 10, {buttons = 0x1, endX, endY} = {})
 	{
 		let i = 0;
@@ -212,6 +256,11 @@ export class Pobot
 		}
 	}
 
+	/**
+	 * Get some HTML from the page, optionally using a selector to get only one element.
+	 * @param {string|null} selector The CSS Query Selector to select an element by
+	 * @returns {Promise<string>} The selected HTML
+	 */
 	getHtml(selector = null)
 	{
 		const getter = () => {
@@ -251,6 +300,12 @@ export class Pobot
 		return getHtml;
 	}
 
+	/**
+	 * Take a screenshot of the page
+	 * @param {string} args.filename The filename to save the screenshot to.
+	 * @param {string} args.type The type of file (defaults to png).
+	 * @returns {Promise<Buffer>} Screenshot image data.
+	 */
 	async getScreenshot(args = {type: 'png'})
 	{
 		const response = await this.client.Page.captureScreenshot(args);
@@ -264,30 +319,54 @@ export class Pobot
 		return data;
 	}
 
-	async addInit(injection, ...args)
+	/**
+	 * Add a callback to be run on every new page load.
+	 * Optionally, with some arguments.
+	 * @param {function()} initCallback
+	 * @param  {...any} args
+	 * @returns {Promise<null>} Resolves when the callback has been registered.
+	 */
+	async addInit(initCallback, ...args)
 	{
-		const source = `(${injection})(...${JSON.stringify(args)})`;
-
+		const source = `(${initCallback})(...${JSON.stringify(args)})`;
 		const ident = await this.client.Page.addScriptToEvaluateOnNewDocument({source});
-
-		this.init.set(injection, ident);
+		this.init.set(initCallback, ident);
 	}
 
-	addInits(inits)
+	/**
+	 * Add multiple callbacks to be run on every new page load.
+	 * @param {...function()} initCallbacks
+	 */
+	addInits(initCallbacks)
 	{
-		return Promise.all(inits.map(i => this.addInit(i)))
+		return Promise.all(initCallbacks.map(i => this.addInit(i)))
 	}
 
+	/**
+	 * Remove a callback that was registered with pobot.addInit() or pobot.addInits().
+	 * @param {function()} injection
+	 */
 	removeInit(injection)
 	{
 		this.client.Page.removeScriptToEvaluateOnNewDocument(this.init.get(injection));
 	}
 
+	/**
+	 * Add a callback to the global scope of the page using the given name.
+	 * @param {string} name
+	 * @param {function()} callback
+	 * @returns {Promise} Resolves when the binding has been registerd.
+	 */
 	addBinding(name, callback)
 	{
 		return this.adapter.addBinding(name, callback);
 	}
 
+	/**
+	 * Add multiple callback to the global scope of the page using the given name.
+	 * @param {Object.<string, function()>} bindings
+	 * @returns {Promise} Resolves when the bindings have been registerd.
+	 */
 	addBindings(bindings)
 	{
 		return Promise.all(
@@ -305,6 +384,10 @@ export class Pobot
 		return Promise.all(modules.map(m => this.addModule(...m)));
 	}
 
+	/**
+	 * Subscribe to one or more console methods in the page.
+	 * @param {Object.<string, function()>} handler Object mapping console method names to lister callbacks
+	 */
 	addConsoleHandler(handler)
 	{
 		if(!this.hasConsole)
@@ -340,31 +423,55 @@ export class Pobot
 		}
 	}
 
+	/**
+	 * Get the version of the browser being controlled.
+	 * @returns {Promise<{product: string, revision: string, userAgent: string, jsVersion: string, protocolVersion:string}>} Version information
+	 */
 	getVersion()
 	{
 		return this.client.Browser.getVersion();
 	}
 
+	/**
+	 * Start logging code coverage.
+	 * @returns {Promise<null>} Resolves when coverage logging has begin.
+	 */
 	startCoverage()
 	{
 		return this.adapter.startCoverage();
 	}
 
+	/**
+	 * Get logged code coverage.
+	 * @returns {Promise<any>} Code coverage information
+	 */
 	takeCoverage()
 	{
 		return this.adapter.takeCoverage();
 	}
 
+	/**
+	 * Stop logging code coverage.
+	 * @returns {Promise<null>} Resolves when coverage logging has stopped.
+	 */
 	stopCoverage()
 	{
 		return this.adapter.stopCoverage();
 	}
 
+	/**
+	 * Close the browser tab.
+	 * @returns  {Promise<null>} Resolves when tab has closed.
+	 */
 	close()
 	{
 		return this.client.close({id: this.client.target.id });
 	}
 
+	/**
+	 * Kill the browser.
+	 * @returns  {Promise<null>} Resolves when browser has been killed.
+	 */
 	kill()
 	{
 		return this.chrome.kill();

@@ -140,6 +140,8 @@ pobot.addInit(() => {
 
 ### pobot.addInits(callbacks)
 
+Add multiple callbacks to be run on every new page load.
+
 ```javascript
 pobot.addInits(
     () => console.log('New page loaded!'),
