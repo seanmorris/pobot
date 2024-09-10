@@ -465,7 +465,7 @@ export class Pobot
 	 */
 	close()
 	{
-		return this.client.close({id: this.client.target.id });
+		return this.client.close();
 	}
 
 	/**
