@@ -1,6 +1,4 @@
-![avatar](https://avatars3.githubusercontent.com/u/640101?s=80&v=4)
-
-# Pobot
+# [![seanmorris/pobot]](https://avatars3.githubusercontent.com/u/640101?s=80&v=4)](https://github.com/seanmorris/pobot) pobot
 
 Promise-oriented Chrome automator.
 
