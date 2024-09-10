@@ -10,7 +10,7 @@ Promise-oriented Chrome automator.
 
 Pobot is still in very heavy alpha. Its API has a lot of pipes and wires sticking out.
 
-### Scripting
+## Scripting
 
 In the example below, we navigate to a page and `then` inject some javascript. **PLEASE NOTE** In the code, it looks like a normal callback is passed to `pobot.inject()`. This is simply for the convenience of syntax highlighting in the editor ONLY. The callback passed here will be converted to a string behing the scenes and run in another JS environment ENTIRELY (the webpage). Of course, normal variable inheritance will NOT apply.
 
@@ -50,9 +50,9 @@ import { Pobot } from 'Pobot';
 })();
 ```
 
-### Methods
+## Methods
 
-#### pobot.goto(url)
+### pobot.goto(url)
 
 Async, will navigate to a new URL. Promise will resolve when the page is loaded.
 
@@ -60,7 +60,7 @@ Async, will navigate to a new URL. Promise will resolve when the page is loaded.
 await pobot.goto('https:google.com');
 ```
 
-#### pobot.inject(callback, ...args)
+### pobot.inject(callback, ...args)
 
 Async, will execute a callback in the context of the page. Return values must be JSON serializable.
 
@@ -78,7 +78,7 @@ const injection = (selector) => {
 const {linkText, linkUrl} = await pobot.inject(injection, '#search a');
 ```
 
-#### pobot.loaded()
+### pobot.loaded()
 
 Async, will resolve when the page load event is detected. Meant to be used after a page action that would trigger navigation.
 
@@ -93,7 +93,7 @@ await pobot.inject(() => {
 await pobot.loaded();
 ```
 
-#### pobot.type(keys, delayTime = 10)
+### pobot.type(keys, delayTime = 10)
 
 Type some text with a virtual keyboard.
 
@@ -101,7 +101,7 @@ Type some text with a virtual keyboard.
 await pobot.type('some text here');
 ```
 
-#### pobot.click(x, y, delayTime, {buttons, endX, endY})
+### pobot.click(x, y, delayTime, {buttons, endX, endY})
 
 Click on a point with a virtual pointer.
 
@@ -109,7 +109,7 @@ Click on a point with a virtual pointer.
 await pobot.click(100, 500);
 ```
 
-#### pobot.getHTML(selector = null)
+### pobot.getHTML(selector = null)
 
 Get some HTML from the page, optionally using a selector to get only one element.
 
@@ -120,7 +120,7 @@ const html = await pobot.getHTML();
 ```javascript
 const html = await pobot.getHTML('#elementID');
 ```
-#### pobot.getScreenshot({filename, type = 'png'})
+### pobot.getScreenshot({filename, type = 'png'})
 
 Take a screenshot of the page.
 
@@ -128,7 +128,7 @@ Take a screenshot of the page.
 await pobot.getScreenshot({filename: '~/screenshots/my-page.png'});
 ```
 
-#### pobot.addInit(callback)
+### pobot.addInit(callback)
 
 Add a callback to be run on every new page load.
 
@@ -138,7 +138,7 @@ pobot.addInit(() => {
 });
 ```
 
-#### pobot.addInits(callbacks)
+### pobot.addInits(callbacks)
 
 ```javascript
 pobot.addInits(
@@ -146,7 +146,7 @@ pobot.addInits(
     () => console.log('Second init callback!'),
 );
 ```
-#### pobot.removeInit()
+### pobot.removeInit()
 
 Remove a callback that was registered with `pobot.addInit` or `pobot.addInits`.
 
@@ -157,17 +157,17 @@ await pobot.addInit(callback);
 await pobot.removeInit(callback);
 ```
 
-#### pobot.addBinding()
-#### pobot.removeBinding()
-#### pobot.addBindings()
-#### pobot.addModule()
-#### pobot.addConsoleHandler(handler)
-#### pobot.getVersion()
-#### pobot.startCoverage()
-#### pobot.takeCoverage()
-#### pobot.stopCoverage()
-#### pobot.close()
-#### pobot.kill()
+### pobot.addBinding()
+### pobot.removeBinding()
+### pobot.addBindings()
+### pobot.addModule()
+### pobot.addConsoleHandler(handler)
+### pobot.getVersion()
+### pobot.startCoverage()
+### pobot.takeCoverage()
+### pobot.stopCoverage()
+### pobot.close()
+### pobot.kill()
 
 ### CLI
 
@@ -221,9 +221,7 @@ You can run the script above like so:
 $ npx pobot example/npmSearch.mjs
 ```
 
-## Pobot
-
-### Copyright 2019-2024 Sean Morris
+## Copyright 2019-2024 Sean Morris
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
