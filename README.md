@@ -274,7 +274,7 @@ and can be used with scripts like so:
 pobot ./relative-path-to/script.js
 ```
 
-Scripts are formatted just like normal modules:
+Scripts are formatted just like normal modules. Just export a `default` function and Pobot will run it.
 
 *example/npmSearch.mjs:*
 ```javascript
