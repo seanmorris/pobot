@@ -8,8 +8,6 @@ Promise-oriented Chrome automator.
 
 ## Usage
 
-Pobot is still in very heavy alpha. Its API has a lot of pipes and wires sticking out.
-
 ### Example
 
 In the example below, we navigate to a page and `then` inject some javascript. **PLEASE NOTE** In the code, it looks like a normal callback is passed to `pobot.inject()`. This is simply for the convenience of syntax highlighting in the editor ONLY. The callback passed here will be converted to a string behing the scenes and run in another JS environment ENTIRELY (the webpage). Of course, normal variable inheritance will NOT apply.
