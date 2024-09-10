@@ -1,5 +1,3 @@
-"use strict";
-
 import os from 'node:os';
 import fs from 'node:fs';
 import { Console } from 'node:console';
@@ -29,6 +27,8 @@ const CallPageLoad = Symbol('CallPageLoad');
 
 const konsole = new Console({stdout: process.stderr, stderr: process.stderr});
 
+const delay = ms => new Promise(a => setTimeout(a, ms));
+
 export class Pobot
 {
 	constructor(adapter)
@@ -51,7 +51,7 @@ export class Pobot
 		this.client.Page.loadEventFired(event => this[CallPageLoad](event));
 	}
 
-	static get(args, adapter = new AdapterChrome)
+	static get(args = [], adapter = new AdapterChrome)
 	{
 		const flags = {...defaultFlags};
 
@@ -143,19 +143,19 @@ export class Pobot
 		});
 	}
 
+	loaded()
+	{
+		return new Promise(accept => this.onNextPageLoad.add(accept));
+	}
+
 	inject(injection, ...args)
 	{
 		return this.adapter.inject(injection, ...args);
 	}
 
-	type(keys, delay = 10)
+	async type(keys, delayTime = 10)
 	{
-		if(typeof keys === 'string')
-		{
-			keys = keys.split('');
-		}
-
-		let i = 0;
+		keys = [...keys];
 
 		while(keys.length)
 		{
@@ -167,70 +167,62 @@ export class Pobot
 			const key = keys[0];
 			const keyCode = keyCodes[ key ];
 
-			setTimeout(() => this.client.Input.dispatchKeyEvent({
+			await delay(delayTime);
+			this.client.Input.dispatchKeyEvent({
 				type: 'keyDown',
 				key:  key,
 				code: key,
 				text: key,
 				nativeVirtualKeyCode:  keyCode,
 				windowsVirtualKeyCode: keyCode
-			}), delay * ++i);
+			});
 
-			setTimeout(() => this.client.Input.dispatchKeyEvent({
+			await delay(delayTime);
+			this.client.Input.dispatchKeyEvent({
 				type: 'keyUp',
 				key:  key,
 				code: key,
 				text: key,
 				nativeVirtualKeyCode:  keyCode,
 				windowsVirtualKeyCode: keyCode
-			}), delay * ++i);
+			});
 
 			keys = keys.slice(1);
 		}
-
-		return new Promise(accept => setTimeout(accept, delay * i + 1));
 	}
 
-	click(x, y, delay = 10, {buttons = 0x1, endX, endY} = {})
+	async click(x, y, delayTime = 10, {buttons = 0x1, endX, endY} = {})
 	{
 		let i = 0;
 
 		const button = 0x1 & buttons ? 'left' : (0x2 & buttons ? 'right' : 'none');
 
-		setTimeout(() => this.client.Input.dispatchMouseEvent({
-			type: 'mousePressed', x, y, buttons, button
-		}), delay * ++i);
+		await delay(delayTime);
+		this.client.Input.dispatchMouseEvent({type: 'mousePressed', x, y, buttons, button});
 
 		if(endX && endY)
 		{
-			setTimeout(() => this.client.Input.dispatchMouseEvent({
-				type: 'mouseMoved', x:endX, y:endY, buttons, button
-			}), delay * ++i);
+			await delay(delayTime);
+			this.client.Input.dispatchMouseEvent({type: 'mouseMoved', x:endX, y:endY, buttons, button});
 
-
-			setTimeout(() => this.client.Input.dispatchMouseEvent({
-				type: 'mouseReleased', x:endX, y:endY, buttons, button
-			}), delay * ++i);
+			await delay(delayTime);
+			this.client.Input.dispatchMouseEvent({type: 'mouseReleased', x:endX, y:endY, buttons, button});
 		}
 		else
 		{
-			setTimeout(() => this.client.Input.dispatchMouseEvent({
-				type: 'mouseReleased', x, y, buttons, button
-			}), delay * ++i);
+			await delay(delayTime);
+			this.client.Input.dispatchMouseEvent({type: 'mouseReleased', x, y, buttons, button})
 		}
-
-
-		return new Promise(accept => setTimeout(accept, delay * ++i));
 	}
 
-	getHtml(selector)
+	getHtml(selector = null)
 	{
 		const getter = () => {
 			const getDocument = this.client.DOM.getDocument();
 
 			let getNode;
 
-			if(selector !== undefined)
+			if(selector !== null)
 			{
 				getNode = getDocument.then(doc => this.client.DOM.querySelector({selector, nodeId: doc.root.nodeId}));
 			}
@@ -262,25 +254,26 @@ export class Pobot
 		return getHtml;
 	}
 
-	getScreenshot(args = {type:'png'})
+	async getScreenshot(args = {type: 'png'})
 	{
-		const takeScreenshot = this.client.Page.captureScreenshot(args)
-		.then(response => Buffer.from(response.data, 'base64'));
+		const response = await this.client.Page.captureScreenshot(args);
+		const data = Buffer.from(response.data, 'base64');
 
 		if(args.filename)
 		{
-			return takeScreenshot.then(data => fsp.writeFile(args.filename, data));
+			await fsp.writeFile(args.filename, data);
 		}
 
-		return takeScreenshot;
+		return data;
 	}
 
-	addInit(injection, ...args)
+	async addInit(injection, ...args)
 	{
 		const source = `(${injection})(...${JSON.stringify(args)})`;
 
-		this.client.Page.addScriptToEvaluateOnNewDocument({source})
-		.then(ident => this.init.set(injection, ident));
+		const ident = await this.client.Page.addScriptToEvaluateOnNewDocument({source});
+
+		this.init.set(injection, ident);
 	}
 
 	addInits(inits)
@@ -313,7 +306,7 @@ export class Pobot
 		return Promise.all(modules.map(m => this.addModule(...m)));
 	}
 
-	addConsoleHandler(handlers)
+	addConsoleHandler(handler)
 	{
 		if(!this.hasConsole)
 		{
@@ -322,7 +315,7 @@ export class Pobot
 			this.hasConsole = true;
 		}
 
-		this.consoleHandlers.add(handlers);
+		this.consoleHandlers.add(handler);
 	}
 
 	[CallConsole](event)

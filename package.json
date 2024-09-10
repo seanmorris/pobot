@@ -1,24 +1,26 @@
 {
   "name": "pobot",
   "description": "Promise oriented chromebot",
-  "version": "0.0.14",
+  "version": "0.1.0",
   "author": "Sean Morris",
   "license": "Apache-2.0",
   "preferglobal": true,
   "bin": {
     "pobot": "bin/pobot.mjs"
   },
+  "main": "index.mjs",
   "files": [
     "bin/pobot.mjs",
     "AdapterChrome.mjs",
     "AdapterFirefox.mjs",
     "Pobot.mjs",
+    "index.mjs",
     "LICENSE",
     "NOTICE",
     "README.md"
   ],
   "dependencies": {
-    "chrome-launcher": "^0.15.1",
-    "chrome-remote-interface": "^0.32.0"
+    "chrome-launcher": "^0.15.2",
+    "chrome-remote-interface": "^0.32.2"
   }
 }

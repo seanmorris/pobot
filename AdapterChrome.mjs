@@ -59,34 +59,31 @@ export class AdapterChrome
 		);
 	}
 
-	inject(injection, ...args)
+	async inject(injection, ...args)
 	{
-		const expression = `(()=> {
-			let ret = (${injection})(...${JSON.stringify(args)});
-
-			if(ret instanceof Promise)
-			{
-				return ret;
-			}
-			else if(typeof ret === 'object')
-			{
-				return JSON.stringify(ret)
-			}
-			else
-			{
-				return ret;
-			}
+		const expression = `(async ()=> {
+			return JSON.stringify(await (${injection})(...${JSON.stringify(args)}));
 		})()`;
 
-		return this.client.Runtime.compileScript({ expression, persistScript: true, sourceURL: injection.name || `<injection#${this.injectCount++}>`})
-		.then(script => this.client.Runtime.runScript({scriptId: script.scriptId, awaitPromise:true}))
-		.then(response => {
-			if(response.exceptionDetails)
-			{
-				throw response;
-			}
-			return response.result.value;
-		});
+		const script = await this.client.Runtime.compileScript({ expression, persistScript: true, sourceURL: injection.name || `<injection#${this.injectCount++}>`});
+		const response = await this.client.Runtime.runScript({scriptId: script.scriptId, awaitPromise:true});
+
+		if(response.exceptionDetails)
+		{
+			throw response;
+		}
+
+		if(response.result.type === 'undefined')
+		{
+			return undefined;
+		}
+
+		if(response.result.type === 'string')
+		{
+			return JSON.parse(response.result.value);
+		}
+
+		return response.result.value;
 	}
 
 	addBinding(name, callback)
