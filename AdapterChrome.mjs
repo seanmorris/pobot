@@ -1,5 +1,5 @@
 import os from 'node:os';
-import cl from 'chrome-launcher';
+import * as cl from 'chrome-launcher';
 import cdp from 'chrome-remote-interface';
 import fs from 'node:fs';
 const fsp = fs.promises;

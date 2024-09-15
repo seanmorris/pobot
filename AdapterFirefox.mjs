@@ -1,6 +1,6 @@
 import os from 'node:os';
 import cdp from 'chrome-remote-interface';
-import { ChildProcess as child_process } from 'node:child_process';
+import * as child_process from 'node:child_process';
 import readline from 'node:readline';
 
 const launchFirefox = ({port, flags, chromeFlags} = {}) => {
@@ -28,7 +28,10 @@ const launchFirefox = ({port, flags, chromeFlags} = {}) => {
 	});
 
 	return findPort.then(port => {
-		const proc = child_process.spawn('/usr/bin/env', ['-S', 'firefox', '--remote-debugging-port=' + port, ...chromeFlags]);
+		const createProfile = ['-S', process.env.POBOT_FIREFOX || 'firefox', '-createprofile', 'pobot ' + flags.userDataDir, ...chromeFlags];
+		const lanunchFirefox = ['-S', process.env.POBOT_FIREFOX || 'firefox', '-profile', flags.userDataDir, '--remote-debugging-port=' + port,  ...chromeFlags];
+		child_process.spawnSync('/usr/bin/env', createProfile);
+		const proc = child_process.spawn('/usr/bin/env', lanunchFirefox);
 		const pid     = proc.pid;
 		const kill    = () => proc.kill();
 
@@ -38,6 +41,7 @@ const launchFirefox = ({port, flags, chromeFlags} = {}) => {
 
 		return new Promise(accept => {
 			reader.on('line', line => {
+				console.log('!! ' + line);
 				if(line.substr(0, 18) === 'DevTools listening')
 				{
 					accept(browser);
@@ -47,12 +51,20 @@ const launchFirefox = ({port, flags, chromeFlags} = {}) => {
 	});
 };
 
-const userDataDir = os.tmpdir() + '/.chrome-user';
-
 export class AdapterFirefox
 {
 	constructor({userDataDir, chromePath}={})
 	{
+		// const uuid = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(
+		// 	/[018]/g
+		// 	, c => (
+		// 		c ^ parseInt(Math.random() * 255) & 15 >> c / 4
+		// 	).toString(16)
+		// );
+
+		const uuid = 'pobot';
+		const defaultUserDataDir = os.tmpdir() + '/.firefox-user/' + uuid;
+
 		this.userDataDir = userDataDir || defaultUserDataDir;
 		this.chromePath  = chromePath;
 
@@ -61,7 +73,7 @@ export class AdapterFirefox
 
 	getClient({chromeFlags, flags, envVars})
 	{
-		const getClient = launchFirefox({chromeFlags, flags})
+		const getClient = launchFirefox({chromeFlags, flags: {...flags, userDataDir: this.userDataDir}})
 		.then(chrome => cdp({port:chrome.port}).then(client => [chrome, client]));
 
 		return getClient.then(

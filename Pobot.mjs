@@ -150,7 +150,6 @@ export class Pobot
 	{
 		return new Promise(accept => {
 			this.client.Page.navigate({url});
-			// if(url.substr(0,5) === 'file:') setTimeout(accept, 1000);
 			this.onNextPageLoad.add(accept);
 		});
 	}
