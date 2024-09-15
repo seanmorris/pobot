@@ -66,7 +66,7 @@ export class AdapterChrome
 
 	async inject(injection, ...args)
 	{
-		const expression = `(async ()=> { return JSON.stringify(await (${injection})(...${JSON.stringify(args)})); })()`;
+		const expression = `(async ()=> { return JSON.stringify(await (\n${injection}\n)(...${JSON.stringify(args)})); })()`;
 		const script = await this.client.Runtime.compileScript({ expression, persistScript: true, sourceURL: injection.name || `<injection#${this.injectCount++}>`});
 		const response = await this.client.Runtime.runScript({scriptId: script.scriptId, awaitPromise:true});
 
