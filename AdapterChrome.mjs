@@ -108,8 +108,8 @@ export class AdapterChrome
 
 	[CallBindings]({name, payload})
 	{
-		const args = JSON.parse(payload);
 		const callback = this.bindings.get(name);
+		const args = JSON.parse(payload);
 		return callback(...args);
 	}
 
@@ -119,8 +119,7 @@ export class AdapterChrome
 
 		const Runtime = this.client.Runtime;
 
-		return Runtime
-		.compileScript({expression, persistScript: true, sourceURL: `<${name}>`})
+		return Runtime.compileScript({expression, persistScript: true, sourceURL: `<${name}>`})
 		.then(script => Runtime.runScript({scriptId: script.scriptId, awaitPromise:true}));
 	}
 
