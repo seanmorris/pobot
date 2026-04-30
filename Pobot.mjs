@@ -82,7 +82,19 @@ export class Pobot
 			return `${key}=${flags[key]}`;
 		});
 
-		const envVars = {HOME: '/tmp', DISPLAY: ':0'};
+		const isolatedHome = adapter.userDataDir;
+
+		await fsp.mkdir(`${isolatedHome}/.config`, {recursive: true});
+		await fsp.mkdir(`${isolatedHome}/.local/share`, {recursive: true});
+		await fsp.mkdir(`${isolatedHome}/.cache`, {recursive: true});
+
+		const envVars = {
+			...process.env,
+			HOME: isolatedHome,
+			XDG_CONFIG_HOME: `${isolatedHome}/.config`,
+			XDG_DATA_HOME: `${isolatedHome}/.local/share`,
+			XDG_CACHE_HOME: `${isolatedHome}/.cache`
+		};
 
 		// const adapter = new AdapterFirefox;
 		// const adapter = new AdapterChrome;
@@ -624,4 +636,3 @@ export class Pobot
 		});
 	}
 };
-

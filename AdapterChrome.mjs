@@ -37,7 +37,8 @@ export class AdapterChrome
 	async getClient({chromeFlags, envVars})
 	{
 		const createPath = fsp.access(this.userDataDir)
-		.then( () => fsp.rm(this.userDataDir, {recursive:true}))
+		.then(() => fsp.rm(this.userDataDir, {recursive:true, force:true}))
+		.then(() => fsp.mkdir(this.userDataDir, {recursive:true}))
 		.catch(() => fsp.mkdir(this.userDataDir, {recursive:true}))
 		.catch(() => console.error(`Could not create userDataDir "${this.userDataDir}"`));
 
